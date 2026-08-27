@@ -661,6 +661,7 @@ class Test(unittest.TestCase, TestData):
             asyncio.set_event_loop(asyncio.new_event_loop())
             method()
 
+        pool = None
         try:
             pool = multiprocessing.pool.ThreadPool(1)
             res = pool.apply_async(set_new_event_loop_for_method, [method])
@@ -701,7 +702,8 @@ class Test(unittest.TestCase, TestData):
             for e_line in tb_info:
                 self.log.error(e_line)
         finally:
-            pool.terminate()
+            if pool is not None:
+                pool.terminate()
 
     def run_avocado(self):
         """
