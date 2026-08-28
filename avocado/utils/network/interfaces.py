@@ -43,6 +43,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import subprocess
 from ipaddress import AddressValueError, IPv4Address, ip_interface
@@ -827,6 +828,32 @@ class NetworkInterface:
             msg = f"{self.name} is not a bond device. {ex}"
             LOG.debug(msg)
             return False
+
+    def get_bond_master(self):
+        """Get the bonding master interface name from a slave interface.
+
+        This method returns the bond interface name for the current slave
+        interface, or ``None`` if the resolved master device is not a bond.
+
+        :return: Bond master interface name if the master is a bonding device,
+                 ``None`` if the master symlink exists but does not point to a
+                 bond interface.
+        :rtype: str or None
+        :raises avocado.utils.network.exceptions.NWException: If the master
+                 symlink cannot be read or the command fails.
+        """
+        master_path = f"/sys/class/net/{self.name}/master"
+        cmd = f"readlink {shlex.quote(master_path)}"
+        try:
+            output = run_command(cmd, self.host)
+            bond_name = os.path.basename(output.strip())
+            if NetworkInterface(bond_name, self.host, if_type="Bond").is_bond():
+                return bond_name
+            return None
+        except Exception as exc:
+            raise NWException(
+                f"Bonding master not found for interface {self.name}"
+            ) from exc
 
     def is_veth(self):
         """Check if interface is a Virtual Ethernet.
